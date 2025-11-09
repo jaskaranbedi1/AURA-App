@@ -1,6 +1,6 @@
 # AURA Milestone 2 – Database Integration
 
-This project connects the AURA Journaling App** to a **MongoDB Atlas** cloud database.
+This project connects the **AURA Journaling App** to a **MongoDB Atlas** cloud database.
 
 ---
 
