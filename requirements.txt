@@ -1,2 +1,3 @@
+huggingface-hub
 pymongo
 python-dotenv
