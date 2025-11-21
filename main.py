@@ -1,10 +1,12 @@
 import os
-import datetime as dt
 from dotenv import load_dotenv
-from pymongo import MongoClient
-from pymongo.errors import PyMongoError
-from huggingface_hub import InferenceClient
-
+from sentiment import init_hf_client, get_sentiment
+from db import (
+    connect_to_mongo,
+    insert_entry,
+    fetch_entry,
+    count_entries
+)
 
 #Load configuration from .env and return the values we need.
 def load_config():
@@ -23,6 +25,91 @@ def load_config():
         raise SystemExit("HF_TOKEN is missing in .env")
 
     return mongo_url, db_name, coll_name, hf_token
+
+
+def main():
+
+    print("=== AURA Journelling App ===")
+
+    # Ask user for some text to analyze
+    user_text = input("Enter a short journal sentence to analyze:\n> ").strip()
+    if not user_text:
+        print("No text entered, exiting.")
+        return
+
+
+    # Load env variables
+    mongo_url, db_name, coll_name, hf_token = load_config()
+
+
+    # Initialize Hugging Face client 
+    hf_client = init_hf_client(hf_token)
+
+
+    # Call Hugging Face sentiment
+    try:
+        sentiment_label, sentiment_score = get_sentiment(hf_client, user_text)
+        print("\nSentiment result:")
+        print(f"{sentiment_label.capitalize()}: {round(sentiment_score * 100, 2)}%")
+
+    except Exception as e:
+        print(f"Error calling Hugging Face API: {e}")
+        # If API fails, we still want to test Mongo connection, so set None
+        sentiment_label = None
+        sentiment_score = None
+
+    
+    # Connect to MongoDB Atla
+    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
+    db = client[db_name]
+    coll = db[coll_name]
+
+
+    # insert into mongo
+    try:
+        entry_id = insert_entry(coll, user_text, sentiment_label, sentiment_score)
+        print(f"\nInserted document with _id: {entry_id}")
+
+        # Fetch entry from database
+        fetched = fetch_entry(coll, entry_id)
+        print("Fetched document from MongoDB:")
+        print(fetched)
+
+        # Count how many docs exist now
+        total = count_entries(coll)
+        print(f"Total documents in '{coll_name}': {total}")
+    finally:
+        client.close()
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Call Hugging Face sentiment model and mapping labels to negative/neutral/positive
@@ -48,67 +135,3 @@ def get_sentiment(client: InferenceClient, text):
     return sentiment, float(r.score)
 
 
-def main():
-    
-    # Load configuration
-    mongo_url, db_name, coll_name, hf_token = load_config()
-
-    # Initialize Hugging Face client 
-    hf_client = InferenceClient(api_key=hf_token)
-
-    # Ask user for some text to analyze
-    print("=== AURA Journelling App ===")
-    user_text = input("Enter a short journal sentence to analyze:\n> ").strip()
-    if not user_text:
-        print("No text entered, exiting.")
-        return
-
-
-    # Call Hugging Face sentiment
-    try:
-        sentiment_label, sentiment_score = get_sentiment(hf_client, user_text)
-        print("\nSentiment result:")
-        print(f"{sentiment_label.capitalize()}: {round(sentiment_score * 100, 2)}%")
-
-    except Exception as e:
-        print(f"Error calling Hugging Face API: {e}")
-        # If API fails, we still want to test Mongo connection, so set None
-        sentiment_label = None
-        sentiment_score = None
-
-    
-    # Connect to MongoDB Atla
-    client = MongoClient(mongo_url, tls=True, tlsAllowInvalidCertificates=False)
-    db = client[db_name]
-    coll = db[coll_name]
-
-
-    # build document
-    doc = {
-        "timestamp": dt.datetime.utcnow(),
-        "text": user_text,
-        "sentiment_label": sentiment_label,
-        "sentiment_score": sentiment_score
-    }
-
-    # insert into mongo
-    try:
-        ins = coll.insert_one(doc)
-        print(f"\nInserted document with _id: {ins.inserted_id}")
-
-        # Read it back
-        found = coll.find_one({"_id": ins.inserted_id}, {"_id": 0})
-        print("Fetched document from MongoDB:")
-        print(found)
-
-        # Count how many docs exist now
-        total = coll.count_documents({})
-        print(f"Total documents in '{coll_name}': {total}")
-
-    except PyMongoError as e:
-        print("MongoDB error:", e)
-    finally:
-        client.close()
-
-if __name__ == "__main__":
-    main()
