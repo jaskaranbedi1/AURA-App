@@ -14,6 +14,7 @@ def connect_to_mongo(mongo_url, db_name, coll_name):
 # insert a journal entry into MongoDB
 def insert_entry(coll, entry: JournalEntry):
 
+
 # build document
     doc = {
         "timestamp": entry.timestamp,
@@ -32,12 +33,12 @@ def fetch_entry(coll, entry_id):
     return coll.find_one({"_id": entry_id}, {"_id": 0})
 
 
-# returns total number of documents
+# return total number of documents
 def count_entries(coll):
     return coll.count_documents({})
 
 
-# returns all journal entries sorted from newest to oldest
+# return all journal entries sorted from newest to oldest
 def list_entries(coll):
     return list(coll.find().sort("timestamp", -1))
 
@@ -46,4 +47,13 @@ def list_entries(coll):
 def find_by_sentiment(coll, label):
     return list(
         coll.find({"sentiment_label": label}).sort("timestamp", -1)
+    )
+
+
+# find entry by keyword or phrase
+def find_by_keyword(coll, phrase: str):
+    return list(
+        coll.find(
+            {"text": {"$regex": phrase, "$options": "i"}}
+        ).sort("timestamp", -1)
     )

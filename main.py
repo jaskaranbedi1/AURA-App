@@ -5,7 +5,8 @@ from db import (
     connect_to_mongo,
     insert_entry,
     list_entries,
-    find_by_sentiment
+    find_by_sentiment,
+    find_by_keyword
 )
 from factory import EntryFactory
 from decorators import TaggingDecorator
@@ -120,7 +121,7 @@ def list_entries_flow(mongo_url, db_name, coll_name):
         client.close()
 
 
-def search_by_sentiment_flow(mongo_url, db_name, coll_name):
+def find_by_sentiment_flow(mongo_url, db_name, coll_name):
     print("\n--- Search entries by sentiment ---")
     label = input("Enter sentiment (positive / neutral / negative): ").strip().lower()
 
@@ -147,6 +148,33 @@ def search_by_sentiment_flow(mongo_url, db_name, coll_name):
         client.close()
 
 
+def find_by_keyword_flow(mongo_url, db_name, coll_name):
+    print("\n--- Search entries by keyword or phrase ---")
+    phrase = input("Enter a keyword or phrase to search for (e.g., 'life', 'life is good', 'feeling stressed'):\n> ").strip()
+
+    if not phrase:
+        print("No keyword/phrase entered. Returning to menu.")
+        return
+
+    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
+
+    try:
+        entries = find_by_keyword(coll, phrase)
+
+        if not entries:
+            print(f"No entries found containing: '{phrase}'")
+            return
+
+        print(f"Found {len(entries)} entries containing '{phrase}':")
+
+        for i, doc in enumerate(entries, start=1):
+            print_entry(doc, i)
+
+    finally:
+        client.close()
+
+
+
 def main():
     print("=== AURA AI-Powered Journeling App ===")
 
@@ -163,7 +191,8 @@ def main():
         print("1) Add new entry")
         print("2) View all entries")
         print("3) Search entries by sentiment")
-        print("4) Quit")
+        print("4) Search entries by phrase")
+        print("5) Quit")
 
         choice = input("Choose an option: ").strip()
     
@@ -172,8 +201,10 @@ def main():
         elif choice == "2":
             list_entries_flow(mongo_url, db_name, coll_name)
         elif choice == "3":
-            search_by_sentiment_flow(mongo_url, db_name, coll_name)
+            find_by_sentiment_flow(mongo_url, db_name, coll_name)
         elif choice == "4":
+            find_by_keyword_flow(mongo_url, db_name, coll_name)
+        elif choice == "5":
             print("Goodbye!")
             break
         else:
