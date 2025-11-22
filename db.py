@@ -57,3 +57,9 @@ def find_by_keyword(coll, phrase: str):
             {"text": {"$regex": phrase, "$options": "i"}}
         ).sort("timestamp", -1)
     )
+
+
+# delete a single journal entry by its _id
+def delete_entry(coll, entry_id):
+    result = coll.delete_one({"_id": entry_id})
+    return result.deleted_count

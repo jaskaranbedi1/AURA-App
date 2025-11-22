@@ -6,7 +6,8 @@ from db import (
     insert_entry,
     list_entries,
     find_by_sentiment,
-    find_by_keyword
+    find_by_keyword,
+    delete_entry
 )
 from factory import EntryFactory
 from decorators import TaggingDecorator
@@ -174,6 +175,59 @@ def find_by_keyword_flow(mongo_url, db_name, coll_name):
         client.close()
 
 
+def delete_entry_flow(mongo_url, db_name, coll_name):
+    print("\n--- Delete a journal entry ---")
+    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
+
+    try:
+        entries = list_entries(coll)
+
+        if not entries:
+            print("No entries found to delete.")
+            return
+
+        print(f"Total entries: {len(entries)}")
+
+        # Show entries with index
+        for i, doc in enumerate(entries, start=1):
+            _id = doc.get("_id")
+            print_entry(doc, i)
+           
+        choice = input("\nEnter the entry number you want to delete (or press Enter to cancel): ").strip()
+        if not choice:
+            print("Delete cancelled.")
+            return
+
+        if not choice.isdigit():
+            print("Invalid number.")
+            return
+
+        idx = int(choice)
+        if idx < 1 or idx > len(entries):
+            print("Number out of range.")
+            return
+
+        # Get selected document
+        doc = entries[idx - 1]
+        _id = doc.get("_id")
+
+        print("\nYou chose to delete this entry:")
+        print_entry(doc, idx)
+
+        confirm = input("\nAre you sure you want to delete this entry? (y/n): ").strip().lower()
+        if confirm != "y":
+            print("Delete cancelled.")
+            return
+
+        deleted = delete_entry(coll, _id)
+        if deleted == 1:
+            print("Entry deleted successfully.")
+        else:
+            print("Delete failed. Entry may not exist anymore.")
+
+    finally:
+        client.close()
+
 
 def main():
     print("=== AURA AI-Powered Journeling App ===")
@@ -192,7 +246,8 @@ def main():
         print("2) View all entries")
         print("3) Search entries by sentiment")
         print("4) Search entries by phrase")
-        print("5) Quit")
+        print("5) Delete an entry")
+        print("6) Quit")
 
         choice = input("Choose an option: ").strip()
     
@@ -205,10 +260,12 @@ def main():
         elif choice == "4":
             find_by_keyword_flow(mongo_url, db_name, coll_name)
         elif choice == "5":
+            delete_entry_flow(mongo_url, db_name, coll_name)
+        elif choice == "6":
             print("Goodbye!")
             break
         else:
-            print("Invalid choice. Please enter 1, 2, 3, or 4.")
+            print("Invalid choice. Please enter 1, 2, 3, 4, 5, or 6.")
 
 if __name__ == "__main__":
     main()
