@@ -49,9 +49,11 @@ class CachingSentimentProxy(SentimentStrategy):
     def get_sentiment(self, text):
         # If we've seen this text before, return cached result
         if text in self._cache:
+            # print("Returning cached sentiment result") 
             return self._cache[text]
 
-        # Otherwise delegate to the real strategy and cache the result
+        # Otherwise call the real strategy and cache the result
+        # print("No cache found, calling Hugging Face API")
         label, score = self._real_strategy.get_sentiment(text)
         self._cache[text] = (label, score)
         return label, score
