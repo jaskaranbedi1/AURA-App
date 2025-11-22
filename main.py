@@ -9,6 +9,7 @@ from db import (
 )
 from datetime import datetime, timezone
 from models import JournalEntry
+from factory import EntryFactory
 
 #Load configuration from .env and return the values we need.
 def load_config():
@@ -68,11 +69,10 @@ def main():
 
 
     # Build a JournalEntry object
-    entry = JournalEntry(
+    entry = EntryFactory.create(
         text=user_text,
         sentiment_label=sentiment_label,
-        sentiment_score=sentiment_score,
-        timestamp=datetime.now(timezone.utc),
+        sentiment_score=sentiment_score
     )
 
 
