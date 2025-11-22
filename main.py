@@ -122,6 +122,7 @@ def list_entries_flow(mongo_url, db_name, coll_name):
         client.close()
 
 
+#filter search based on sentiment
 def find_by_sentiment_flow(mongo_url, db_name, coll_name):
     print("\n--- Search entries by sentiment ---")
     label = input("Enter sentiment (positive / neutral / negative): ").strip().lower()
@@ -149,6 +150,7 @@ def find_by_sentiment_flow(mongo_url, db_name, coll_name):
         client.close()
 
 
+#filter search based on keyword/phrase
 def find_by_keyword_flow(mongo_url, db_name, coll_name):
     print("\n--- Search entries by keyword or phrase ---")
     phrase = input("Enter a keyword or phrase to search for (e.g., 'life', 'life is good', 'feeling stressed'):\n> ").strip()
@@ -175,6 +177,7 @@ def find_by_keyword_flow(mongo_url, db_name, coll_name):
         client.close()
 
 
+#delete an entry
 def delete_entry_flow(mongo_url, db_name, coll_name):
     print("\n--- Delete a journal entry ---")
     client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
@@ -229,6 +232,54 @@ def delete_entry_flow(mongo_url, db_name, coll_name):
         client.close()
 
 
+# generate a report showing mood stats
+def mood_report_flow(mongo_url, db_name, coll_name):
+    print("\n--- Mood Summary Report ---")
+    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
+
+    try:
+        entries = list_entries(coll)
+
+        if not entries:
+            print("No journal entries found.")
+            return
+
+        total = len(entries)
+
+        # Count labels
+        pos = sum(1 for doc in entries if doc.get("sentiment_label") == "positive")
+        neu = sum(1 for doc in entries if doc.get("sentiment_label") == "neutral")
+        neg = sum(1 for doc in entries if doc.get("sentiment_label") == "negative")
+
+        scores = []
+
+        for e in entries:
+            score = e.get("sentiment_score")
+            if score is not None:
+                scores.append(score)
+
+        # Compute average score (if any scores exist)
+        avg_score = sum(scores) / len(scores) if scores else 0.0
+
+        # Find most common mood
+        mood_counts = {
+            "positive": pos,
+            "neutral": neu,
+            "negative": neg,
+        }
+        most_common = max(mood_counts, key=mood_counts.get)
+
+        print(f"Total entries: {total}")
+        print(f"Positive: {pos}")
+        print(f"Neutral: {neu}")
+        print(f"Negative: {neg}")
+        print(f"\nMost common mood: {most_common.capitalize()}")
+        print(f"Average sentiment score: {avg_score:.2f}")
+
+    finally:
+        client.close()
+
+
 def main():
     print("=== AURA AI-Powered Journeling App ===")
 
@@ -247,7 +298,8 @@ def main():
         print("3) Search entries by sentiment")
         print("4) Search entries by phrase")
         print("5) Delete an entry")
-        print("6) Quit")
+        print("6) Mood report")
+        print("7) Quit")
 
         choice = input("Choose an option: ").strip()
     
@@ -262,6 +314,8 @@ def main():
         elif choice == "5":
             delete_entry_flow(mongo_url, db_name, coll_name)
         elif choice == "6":
+            mood_report_flow(mongo_url, db_name, coll_name)
+        elif choice == "7":
             print("Goodbye!")
             break
         else:
