@@ -37,3 +37,21 @@ class HuggingFaceSentimentStrategy(SentimentStrategy):
             label = r.label
 
         return label, float(r.score)
+    
+
+# Proxy pattern: wraps Wraps a real SentimentStrategy and caches sentiment results for repeated texts to avoid unnecessary API calls. 
+class CachingSentimentProxy(SentimentStrategy):
+    
+    def __init__(self, real_strategy: SentimentStrategy):
+        self._real_strategy = real_strategy
+        self._cache: dict[str, tuple[str, float]] = {}
+
+    def get_sentiment(self, text):
+        # If we've seen this text before, return cached result
+        if text in self._cache:
+            return self._cache[text]
+
+        # Otherwise delegate to the real strategy and cache the result
+        label, score = self._real_strategy.get_sentiment(text)
+        self._cache[text] = (label, score)
+        return label, score

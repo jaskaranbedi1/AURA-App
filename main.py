@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from sentiment import HuggingFaceSentimentStrategy
+from sentiment import HuggingFaceSentimentStrategy, CachingSentimentProxy
 from db import (
     connect_to_mongo,
     insert_entry,
@@ -118,8 +118,9 @@ def main():
     mongo_url, db_name, coll_name, hf_token = load_config()
 
 
-    # Initialize Hugging Face client 
-    sentiment_strategy = HuggingFaceSentimentStrategy(hf_token)
+    # Initialize Hugging Face strategy and wrap it with Proxy for caching
+    base_strategy = HuggingFaceSentimentStrategy(hf_token)
+    sentiment_strategy = CachingSentimentProxy(base_strategy)
 
     while True:
         print("\n=== AURA Journaling CLI ===")
