@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from sentiment import init_hf_client, get_sentiment
+from sentiment import HuggingFaceSentimentStrategy
 from db import (
     connect_to_mongo,
     insert_entry,
@@ -46,12 +46,11 @@ def main():
 
 
     # Initialize Hugging Face client 
-    hf_client = init_hf_client(hf_token)
-
+    sentiment_strategy = HuggingFaceSentimentStrategy(hf_token)
 
     # Call Hugging Face sentiment
     try:
-        sentiment_label, sentiment_score = get_sentiment(hf_client, user_text)
+        sentiment_label, sentiment_score = sentiment_strategy.get_sentiment(user_text)
         print("\nSentiment result:")
         print(f"{sentiment_label.capitalize()}: {round(sentiment_score * 100, 2)}%")
 
