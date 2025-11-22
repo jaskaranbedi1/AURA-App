@@ -7,6 +7,8 @@ from db import (
     fetch_entry,
     count_entries
 )
+from datetime import datetime, timezone
+from models import JournalEntry
 
 #Load configuration from .env and return the values we need.
 def load_config():
@@ -29,7 +31,7 @@ def load_config():
 
 def main():
 
-    print("=== AURA Journelling App ===")
+    print("=== AURA AI-Powered Journeling App ===")
 
     # Ask user for some text to analyze
     user_text = input("Enter a short journal sentence to analyze:\n> ").strip()
@@ -65,9 +67,18 @@ def main():
     coll = db[coll_name]
 
 
+    # Build a JournalEntry object
+    entry = JournalEntry(
+        text=user_text,
+        sentiment_label=sentiment_label,
+        sentiment_score=sentiment_score,
+        timestamp=datetime.now(timezone.utc),
+    )
+
+
     # insert into mongo
     try:
-        entry_id = insert_entry(coll, user_text, sentiment_label, sentiment_score)
+        entry_id = insert_entry(coll, entry)
         print(f"\nInserted document with _id: {entry_id}")
 
         # Fetch entry from database

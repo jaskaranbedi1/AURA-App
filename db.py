@@ -1,7 +1,7 @@
 import datetime as dt
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
-
+from models import JournalEntry
 
 # Connect to MongoDB Atla
 def connect_to_mongo(mongo_url, db_name, coll_name):
@@ -12,14 +12,14 @@ def connect_to_mongo(mongo_url, db_name, coll_name):
 
 
 # insert a journal entry into MongoDB
-def insert_entry(coll, text, sentiment_label, sentiment_score):
-    
-    # build document
+def insert_entry(coll, entry: JournalEntry):
+
+# build document
     doc = {
-        "timestamp": dt.datetime.now(dt.timezone.utc),
-        "text": text,
-        "sentiment_label": sentiment_label,
-        "sentiment_score": sentiment_score,
+        "timestamp": entry.timestamp,
+        "text": entry.text,
+        "sentiment_label": entry.sentiment_label,
+        "sentiment_score": entry.sentiment_score,
     }
 
     result = coll.insert_one(doc)
