@@ -40,3 +40,10 @@ def count_entries(coll):
 # returns all journal entries sorted from newest to oldest
 def list_entries(coll):
     return list(coll.find().sort("timestamp", -1))
+
+
+# find all entries with a given sentiment label (e.g.- "positive")
+def find_by_sentiment(coll, label):
+    return list(
+        coll.find({"sentiment_label": label}).sort("timestamp", -1)
+    )

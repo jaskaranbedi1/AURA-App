@@ -4,7 +4,8 @@ from sentiment import HuggingFaceSentimentStrategy, CachingSentimentProxy
 from db import (
     connect_to_mongo,
     insert_entry,
-    list_entries
+    list_entries,
+    find_by_sentiment
 )
 from factory import EntryFactory
 from decorators import TaggingDecorator
@@ -66,6 +67,34 @@ def add_entry_flow(sentiment_strategy, mongo_url, db_name, coll_name):
         client.close()
 
 
+#helper function to print a single journal entry in a consistent format
+def print_entry(doc, index=None):
+
+    text = doc.get("text", "")
+    sentiment = doc.get("sentiment_label")
+    score = doc.get("sentiment_score")
+    tag = doc.get("tag")
+    ts = doc.get("timestamp")
+
+    # Format timestamp
+    ts_str = ts.strftime("%Y-%m-%d %H:%M") if hasattr(ts, "strftime") else str(ts)
+
+    # Print entry
+    if index is not None:
+        print(f"\nEntry #{index} ({ts_str})")
+    else:
+        print(f"\n({ts_str})")
+
+    # Print fields
+    if tag:
+        print(f"  Tag: {tag}")
+
+    if sentiment:
+        pct = round(score * 100, 2)
+        print(f"  Sentiment: {sentiment} ({pct}%)")
+
+    print(f"  Text: {text}")
+
 
 #list all entries
 def list_entries_flow(mongo_url, db_name, coll_name):
@@ -84,29 +113,36 @@ def list_entries_flow(mongo_url, db_name, coll_name):
         print(f"Total entries: {total}")
               
         for i, doc in enumerate(entries, start=1):
-            # Extract fields safely
-            entry_number = total - i + 1
-            text = doc.get("text", "")
-            sentiment = doc.get("sentiment_label")
-            score = doc.get("sentiment_score")
-            tag = doc.get("tag") 
-            ts = doc.get("timestamp")
+            #calling print_entry() to print
+            print_entry(doc, i)
 
-            # Shorten timestamp formatting
-            ts_str = ts.strftime("%Y-%m-%d %H:%M") if hasattr(ts, "strftime") else str(ts)
+    finally:
+        client.close()
 
-            # Print entry
-            print(f"\nEntry #{entry_number} ({ts_str})")
 
-            print(f"  Text: {text}")
+def search_by_sentiment_flow(mongo_url, db_name, coll_name):
+    print("\n--- Search entries by sentiment ---")
+    label = input("Enter sentiment (positive / neutral / negative): ").strip().lower()
 
-            if sentiment:
-                pct = round(score * 100, 2)
-                print(f"  Sentiment: {sentiment} ({pct}%)")
+    if label not in {"positive", "neutral", "negative"}:
+        print("Invalid sentiment. Please enter: positive, neutral, or negative.")
+        return
 
-            if tag:
-                print(f"  Tag: {tag}")
+    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
 
+    try:
+        entries = find_by_sentiment(coll, label)
+
+        if not entries:
+            print(f"No entries found with sentiment: {label}")
+            return
+
+        total = len(entries)
+        print(f"Found {total} entries with sentiment '{label}':")
+
+        for i, doc in enumerate(entries, start=1):
+            #calling print_entry() to print
+            print_entry(doc, i)
     finally:
         client.close()
 
@@ -126,7 +162,8 @@ def main():
         print("\n=== AURA Journaling CLI ===")
         print("1) Add new entry")
         print("2) View all entries")
-        print("3) Quit")
+        print("3) Search entries by sentiment")
+        print("4) Quit")
 
         choice = input("Choose an option: ").strip()
     
@@ -135,10 +172,12 @@ def main():
         elif choice == "2":
             list_entries_flow(mongo_url, db_name, coll_name)
         elif choice == "3":
+            search_by_sentiment_flow(mongo_url, db_name, coll_name)
+        elif choice == "4":
             print("Goodbye!")
             break
         else:
-            print("Invalid choice. Please enter 1, 2, or 3.")
+            print("Invalid choice. Please enter 1, 2, 3, or 4.")
 
 if __name__ == "__main__":
     main()
