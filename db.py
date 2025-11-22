@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from models import JournalEntry
 
-# Connect to MongoDB Atla
+# Connect to MongoDB Atlas
 def connect_to_mongo(mongo_url, db_name, coll_name):
     client = MongoClient(mongo_url, tls=True, tlsAllowInvalidCertificates=False)
     db = client[db_name]
@@ -34,3 +34,8 @@ def fetch_entry(coll, entry_id):
 # returns total number of documents
 def count_entries(coll):
     return coll.count_documents({})
+
+
+# returns all journal entries sorted from newest to oldest
+def list_entries(coll):
+    return list(coll.find().sort("timestamp", -1))

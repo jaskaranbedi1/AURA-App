@@ -4,14 +4,11 @@ from sentiment import HuggingFaceSentimentStrategy
 from db import (
     connect_to_mongo,
     insert_entry,
-    fetch_entry,
-    count_entries
+    list_entries
 )
-from datetime import datetime, timezone
-from models import JournalEntry
 from factory import EntryFactory
 
-#Load configuration from .env and return the values we need.
+# Load configuration from .env and return the values we need.
 def load_config():
 
     load_dotenv()
@@ -30,25 +27,16 @@ def load_config():
     return mongo_url, db_name, coll_name, hf_token
 
 
-def main():
+# Prompt user for text, analyze sentiment, save entry to MongoDB.
+def add_entry_flow(sentiment_strategy, mongo_url, db_name, coll_name):
+    print("\n--- Add new journal entry ---")
+    user_text = input("Write your entry:\n> ").strip()
 
-    print("=== AURA AI-Powered Journeling App ===")
-
-    # Ask user for some text to analyze
-    user_text = input("Enter a short journal sentence to analyze:\n> ").strip()
     if not user_text:
-        print("No text entered, exiting.")
+        print("No text entered. Returning to menu.")
         return
-
-
-    # Load env variables
-    mongo_url, db_name, coll_name, hf_token = load_config()
-
-
-    # Initialize Hugging Face client 
-    sentiment_strategy = HuggingFaceSentimentStrategy(hf_token)
-
-    # Call Hugging Face sentiment
+    
+    # Call sentiment analysis strategy and handle API errors
     try:
         sentiment_label, sentiment_score = sentiment_strategy.get_sentiment(user_text)
         print("\nSentiment result:")
@@ -56,16 +44,8 @@ def main():
 
     except Exception as e:
         print(f"Error calling Hugging Face API: {e}")
-        # If API fails, we still want to test Mongo connection, so set None
         sentiment_label = None
         sentiment_score = None
-
-    
-    # Connect to MongoDB Atla
-    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
-    db = client[db_name]
-    coll = db[coll_name]
-
 
     # Build a JournalEntry object
     entry = EntryFactory.create(
@@ -74,22 +54,82 @@ def main():
         sentiment_score=sentiment_score
     )
 
+    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
 
-    # insert into mongo
     try:
         entry_id = insert_entry(coll, entry)
-        print(f"\nInserted document with _id: {entry_id}")
-
-        # Fetch entry from database
-        fetched = fetch_entry(coll, entry_id)
-        print("Fetched document from MongoDB:")
-        print(fetched)
-
-        # Count how many docs exist now
-        total = count_entries(coll)
-        print(f"Total documents in '{coll_name}': {total}")
+        print(f"\nSaved entry with _id: {entry_id}")
     finally:
         client.close()
+
+
+#list all entries
+def list_entries_flow(mongo_url, db_name, coll_name):
+    print("\n--- Your journal entries ---")
+    client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
+
+    try:
+        entries = list_entries(coll)
+
+        if not entries:
+            print("No entries found.")
+            return
+
+        total = len(entries)
+
+        print(f"Total entries: {total}")
+              
+        for i, doc in enumerate(entries, start=1):
+            # Extract fields safely
+            entry_number = total - i + 1
+            text = doc.get("text", "")
+            sentiment = doc.get("sentiment_label")
+            score = doc.get("sentiment_score")
+            ts = doc.get("timestamp")
+
+            # Shorten timestamp formatting
+            ts_str = ts.strftime("%Y-%m-%d %H:%M") if hasattr(ts, "strftime") else str(ts)
+
+            # Print entry
+            print(f"\nEntry #{entry_number} ({ts_str})")
+
+            if sentiment:
+                pct = round(score * 100, 2)
+                print(f"  Sentiment: {sentiment} ({pct}%)")
+
+            print(f"  Text: {text}")
+
+    finally:
+        client.close()
+
+
+def main():
+    print("=== AURA AI-Powered Journeling App ===")
+
+    # Load env variables
+    mongo_url, db_name, coll_name, hf_token = load_config()
+
+
+    # Initialize Hugging Face client 
+    sentiment_strategy = HuggingFaceSentimentStrategy(hf_token)
+
+    while True:
+        print("\n=== AURA Journaling CLI ===")
+        print("1) Add new entry")
+        print("2) View all entries")
+        print("3) Quit")
+
+        choice = input("Choose an option: ").strip()
+    
+        if choice == "1":
+            add_entry_flow(sentiment_strategy, mongo_url, db_name, coll_name)
+        elif choice == "2":
+            list_entries_flow(mongo_url, db_name, coll_name)
+        elif choice == "3":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice. Please enter 1, 2, or 3.")
 
 if __name__ == "__main__":
     main()
