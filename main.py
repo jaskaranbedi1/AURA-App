@@ -10,7 +10,7 @@ from db import (
     delete_entry
 )
 from factory import EntryFactory
-from decorators import TaggingDecorator
+from decoratorx import TaggingDecorator
 
 # Load configuration from .env and return the values we need.
 def load_config():
