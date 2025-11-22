@@ -11,3 +11,4 @@ class JournalEntry:
     sentiment_label: Optional[str]
     sentiment_score: Optional[float]
     timestamp: datetime
+    tag: Optional[str] = None   # tag added by decorator

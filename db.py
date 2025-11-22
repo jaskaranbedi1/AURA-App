@@ -20,6 +20,7 @@ def insert_entry(coll, entry: JournalEntry):
         "text": entry.text,
         "sentiment_label": entry.sentiment_label,
         "sentiment_score": entry.sentiment_score,
+        "tag": entry.tag,
     }
 
     result = coll.insert_one(doc)

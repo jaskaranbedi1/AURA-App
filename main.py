@@ -7,6 +7,7 @@ from db import (
     list_entries
 )
 from factory import EntryFactory
+from decorators import TaggingDecorator
 
 # Load configuration from .env and return the values we need.
 def load_config():
@@ -41,7 +42,6 @@ def add_entry_flow(sentiment_strategy, mongo_url, db_name, coll_name):
         sentiment_label, sentiment_score = sentiment_strategy.get_sentiment(user_text)
         print("\nSentiment result:")
         print(f"{sentiment_label.capitalize()}: {round(sentiment_score * 100, 2)}%")
-
     except Exception as e:
         print(f"Error calling Hugging Face API: {e}")
         sentiment_label = None
@@ -54,6 +54,9 @@ def add_entry_flow(sentiment_strategy, mongo_url, db_name, coll_name):
         sentiment_score=sentiment_score
     )
 
+    # Decorator Pattern: add a mood tag based on sentiment
+    entry = TaggingDecorator(entry).add_tag()
+
     client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
 
     try:
@@ -61,6 +64,7 @@ def add_entry_flow(sentiment_strategy, mongo_url, db_name, coll_name):
         print(f"\nSaved entry with _id: {entry_id}")
     finally:
         client.close()
+
 
 
 #list all entries
@@ -85,6 +89,7 @@ def list_entries_flow(mongo_url, db_name, coll_name):
             text = doc.get("text", "")
             sentiment = doc.get("sentiment_label")
             score = doc.get("sentiment_score")
+            tag = doc.get("tag") 
             ts = doc.get("timestamp")
 
             # Shorten timestamp formatting
@@ -93,11 +98,14 @@ def list_entries_flow(mongo_url, db_name, coll_name):
             # Print entry
             print(f"\nEntry #{entry_number} ({ts_str})")
 
+            print(f"  Text: {text}")
+
             if sentiment:
                 pct = round(score * 100, 2)
                 print(f"  Sentiment: {sentiment} ({pct}%)")
 
-            print(f"  Text: {text}")
+            if tag:
+                print(f"  Tag: {tag}")
 
     finally:
         client.close()
