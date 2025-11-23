@@ -259,6 +259,8 @@ def mood_report(mongo_url, db_name, coll_name):
                 tag = "unrated"    # old entries or ones without sentiment
             if tag not in tag_counts:
                 tag_counts[tag] = 0
+            # Add 1 to the count
+            tag_counts[tag] += 1
 
         # Compute average score (if any scores exist)
         avg_score = sum(scores) / len(scores) if scores else 0.0
