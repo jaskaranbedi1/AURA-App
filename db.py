@@ -5,8 +5,6 @@ from models import JournalEntry
 
 # Connects to a MongoDB Atlas database and returns the client + collection
 def connect_to_mongo(mongo_url, db_name, coll_name):
-     # tls=True ensures encrypted connection to MongoDB Atlas
-    #client = MongoClient(mongo_url, tls=True, tlsAllowInvalidCertificates=False)
     client = MongoClient(mongo_url)
     db = client[db_name] #select db
     coll = db[coll_name] #select collection
