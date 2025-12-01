@@ -9,7 +9,6 @@ class SentimentStrategy(ABC):
     def get_sentiment(self, text: str):
         pass
 
-
 # Concrete Strategy using HuggingFace Inference API.
 class HuggingFaceSentimentStrategy(SentimentStrategy):
 
@@ -38,8 +37,7 @@ class HuggingFaceSentimentStrategy(SentimentStrategy):
 
         return label, float(r.score)
     
-
-# Proxy pattern: wraps Wraps a real SentimentStrategy and caches sentiment results for repeated texts to avoid unnecessary API calls. 
+# Proxy pattern: wraps Wraps a real SentimentStrategy and caches sentiment results to avoid unnecessary API calls. 
 class CachingSentimentProxy(SentimentStrategy):
     
     def __init__(self, real_strategy: SentimentStrategy):

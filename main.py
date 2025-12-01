@@ -26,11 +26,13 @@ def load_config():
 
     if not hf_token:
         raise SystemExit("HF_TOKEN is missing in .env")
+    
+    #print("\nDEBUG: Using Mongo URL:", mongo_url)
 
     return mongo_url, db_name, coll_name, hf_token
 
 
-# Prompt user for text
+# Prompt user for text, analyze it and then save it to db
 def add_entry(sentiment_strategy, mongo_url, db_name, coll_name):
     print("\nAdd new journal entry")
     user_text = input("Write your entry:\n> ").strip()
@@ -39,7 +41,7 @@ def add_entry(sentiment_strategy, mongo_url, db_name, coll_name):
         print("No text entered, returning to menu.")
         return
     
-    # Call Hugging Face
+    # Call Hugging Face sentiment model
     try:
         sentiment_label, sentiment_score = sentiment_strategy.get_sentiment(user_text)
         print("\nSentiment result:")
@@ -49,7 +51,7 @@ def add_entry(sentiment_strategy, mongo_url, db_name, coll_name):
         sentiment_label = None
         sentiment_score = None
 
-    # create the entry object
+    # Use the factory to build a JournalEntry object
     entry = EntryFactory.create(
         text=user_text,
         sentiment_label=sentiment_label,
@@ -59,8 +61,8 @@ def add_entry(sentiment_strategy, mongo_url, db_name, coll_name):
     # Decorator Pattern- add a simple mood tag
     entry = TaggingDecorator(entry).add_tag()
 
+    #save entry to db
     client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
-
     try:
         entry_id = insert_entry(coll, entry)
         print(f"\nSaved entry with _id: {entry_id}")
@@ -68,7 +70,7 @@ def add_entry(sentiment_strategy, mongo_url, db_name, coll_name):
         client.close()
 
 
-#helper func to print one entry
+#helper function to print one entry
 def print_entry(doc, index=None):
     text = doc.get("text", "")
     sentiment = doc.get("sentiment_label")
@@ -82,23 +84,26 @@ def print_entry(doc, index=None):
     else:
         ts_str = str(ts)
 
-    # Print fileds
+    # Print header line with entry number and timestamp
     if index is not None:
         print(f"\nEntry #{index} ({ts_str})")
     else:
         print(f"\n({ts_str})")
 
-    if tag:
-        print(f"  Tag: {tag}")
+    # Print text 
+    print(f"  Text: {text}")
 
+    #Print sentiment if available
     if sentiment:
         pct = round(score * 100, 2)
         print(f"  Sentiment: {sentiment} ({pct}%)")
+    
+    #Print sentiment if available
+    if tag:
+        print(f"  Tag: {tag}")
 
-    print(f"  Text: {text}")
 
-
-#show all entries
+#show all entries from newest to oldest
 def show_entries(mongo_url, db_name, coll_name):
     print("\nYour journal entries")
     client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
@@ -119,7 +124,7 @@ def show_entries(mongo_url, db_name, coll_name):
         client.close()
 
 
-#filter search based on sentiment
+# Search entries by sentiment label
 def search_by_sentiment(mongo_url, db_name, coll_name):
     print("\nSearch entries by sentiment")
     label = input("Enter sentiment (positive / neutral / negative): ").strip().lower()
@@ -145,7 +150,7 @@ def search_by_sentiment(mongo_url, db_name, coll_name):
         client.close()
 
 
-#filter search based on keyword/phrase
+# Search entries by a keyword or phrase in the text
 def search_by_phrase(mongo_url, db_name, coll_name):
     print("\nSearch entries by keyword or phrase")
     phrase = input("Enter a keyword or phrase to search for (e.g., 'life', 'life is good'):\n> ").strip()
@@ -167,12 +172,11 @@ def search_by_phrase(mongo_url, db_name, coll_name):
 
         for i, doc in enumerate(entries, start=1):
             print_entry(doc, i)
-
     finally:
         client.close()
 
 
-#delete an entry
+# delete an entry
 def delete_entry_menu(mongo_url, db_name, coll_name):
     print("\nDelete a journal entry")
     client, coll = connect_to_mongo(mongo_url, db_name, coll_name)
@@ -221,7 +225,6 @@ def delete_entry_menu(mongo_url, db_name, coll_name):
             print("Entry deleted successfully.")
         else:
             print("Delete failed.")
-
     finally:
         client.close()
 
@@ -245,6 +248,7 @@ def mood_report(mongo_url, db_name, coll_name):
         neu = sum(1 for doc in entries if doc.get("sentiment_label") == "neutral")
         neg = sum(1 for doc in entries if doc.get("sentiment_label") == "negative")
 
+        # Collect all scores to compute an average
         scores = []
         for e in entries:
             score = e.get("sentiment_score")
@@ -259,13 +263,12 @@ def mood_report(mongo_url, db_name, coll_name):
                 tag = "unrated"    # old entries or ones without sentiment
             if tag not in tag_counts:
                 tag_counts[tag] = 0
-            # Add 1 to the count
             tag_counts[tag] += 1
 
         # Compute average score (if any scores exist)
         avg_score = sum(scores) / len(scores) if scores else 0.0
 
-        # Find most common mood
+        # Find most common mood label
         mood_counts = {
             "positive": pos,
             "neutral": neu,

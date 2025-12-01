@@ -1,6 +1,7 @@
 from models import JournalEntry
 
-#Decorator Pattern: Adds a high-level mood tag to a JournalEntry based on its sentiment label and score
+#Decorator Pattern
+# This class takes a JournalEntry and adds a simple mood tag based on its sentiment.
 class TaggingDecorator:
 
     def __init__(self, entry: JournalEntry):
@@ -10,9 +11,10 @@ class TaggingDecorator:
         label = self.entry.sentiment_label
         score = self.entry.sentiment_score
 
-        # Default tag if we don't have sentiment info
+        # Default tag if entry doesn't have sentiment info
         tag = "unrated"
 
+        # Only calculate a tag if both label and score exist.
         if label is not None and score is not None:
             if label == "positive":
                 tag = "very positive" if score >= 0.80 else "positive"
@@ -21,6 +23,6 @@ class TaggingDecorator:
             elif label == "negative":
                 tag = "needs attention" if score >= 0.80 else "negative"
 
-        # Attach tag to the entry and return it
+        # save tag into the entry and return it
         self.entry.tag = tag
         return self.entry
