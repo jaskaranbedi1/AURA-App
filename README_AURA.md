@@ -54,10 +54,11 @@ AURA/
 ├── main.py
 ├── sentiment.py
 ├── decorators.py
+├── models.py
 ├── factory.py
 ├── db.py
 ├── requirements.txt
-└── README.md
+└── README_AURA.md
 ```
 
 ## Usage Example
