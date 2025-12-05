@@ -56,8 +56,6 @@ AURA/
 ├── decorators.py
 ├── factory.py
 ├── db.py
-├── demo_db.py
-├── demo_api.py
 ├── requirements.txt
 └── README.md
 ```
